@@ -1,0 +1,62 @@
+{
+    "project": "Paper Grade Transition Copilot",
+    "stage": 6,
+    "current_process": {
+        "transition_id": "GC0001",
+        "grade_from": "A",
+        "grade_to": "D",
+        "machine_speed": 832.396,
+        "stock_flow": 68.045,
+        "steam_pressure": 4.8,
+        "basis_weight": 91.206,
+        "basis_weight_setpoint": 100.0,
+        "deviation_pct": 8.794,
+        "status": "OFF-SPEC / HIGH RISK"
+    },
+    "specification": {
+        "maximum_allowed_deviation_pct": 2.5
+    },
+    "historical_evidence": {
+        "historical_transition_records": 180,
+        "matching_grade_transition_observations": 1920,
+        "success_rate_pct": 56.25,
+        "failure_rate_pct": 43.75,
+        "off_spec_rate_pct": 43.4375,
+        "average_stabilization_time_min": 48.9375,
+        "median_stabilization_time_min": 51.5,
+        "minimum_stabilization_time_min": 33,
+        "maximum_stabilization_time_min": 63
+    },
+    "stage_5_recommendation": {
+        "candidate_count": 343,
+        "safe_candidate_count": 0,
+        "safe_threshold_pct": 2.5,
+        "best_candidate": {
+            "machine_speed": 802.396,
+            "stock_flow": 62.045,
+            "steam_pressure": 4.5,
+            "predicted_basis_weight": 91.97265,
+            "predicted_deviation_pct": 8.027351379394531,
+            "off_spec": 1.0,
+            "change_penalty": 8.999999999999998
+        }
+    },
+    "stabilization": {
+        "estimated_stabilization_time_min": 48.9375,
+        "estimation_source": "historical average for matching grade transition",
+        "stabilization_risk": "MEDIUM",
+        "historical_evidence_strength": "HIGH"
+    },
+    "copilot_decision": {
+        "recommendation_status": "NO SAFE RECOMMENDATION FOUND",
+        "recommended_action": "Operator review / recipe-level or additional process-variable adjustment.",
+        "reasoning": [
+            "Current process is outside the 2.5% Basis Weight specification.",
+            "Current Basis Weight deviation is above the required safety threshold.",
+            "No tested combination of controllable Machine Speed, Stock Flow and Steam Pressure was predicted to satisfy the specification.",
+            "The system should therefore escalate the decision instead of recommending an unsafe setting.",
+            "Historical A → D transitions show a 56.2% success rate.",
+            "Historical average stabilization time is 48.9 minutes."
+        ]
+    }
+}

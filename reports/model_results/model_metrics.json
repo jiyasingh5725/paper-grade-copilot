@@ -1,0 +1,21 @@
+{
+    "dataset_rows": 21600,
+    "total_transitions": 180,
+    "training_transitions": 144,
+    "testing_transitions": 36,
+    "training_rows": 17280,
+    "testing_rows": 4320,
+    "regression": {
+        "MAE_GSM": 0.3027447195688885,
+        "RMSE_GSM": 0.46511431722580415,
+        "R2": 0.9974189521428423
+    },
+    "classification": {
+        "accuracy": 0.9550925925925926,
+        "precision": 0.9351969504447268,
+        "recall": 0.9411764705882353,
+        "F1": 0.9381771829190567,
+        "ROC_AUC": 0.9917981785381534
+    },
+    "regression_to_off_spec_accuracy": 0.9534722222222223
+}

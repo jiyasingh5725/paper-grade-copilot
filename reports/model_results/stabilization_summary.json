@@ -1,0 +1,32 @@
+{
+    "stage": 6,
+    "project": "Paper Grade Transition Copilot",
+    "current_process": {
+        "transition_id": "GC0001",
+        "grade_from": "A",
+        "grade_to": "D",
+        "grade_transition": "A \u2192 D",
+        "machine_speed": 832.396,
+        "stock_flow": 68.045,
+        "steam_pressure": 4.8,
+        "basis_weight": 91.206,
+        "basis_weight_setpoint": 100.0,
+        "current_deviation_pct": 8.794,
+        "current_off_spec": 1
+    },
+    "safety": {
+        "specification_limit_pct": 2.5,
+        "safe_candidates_found": 0,
+        "decision": "NO_SAFE_RECOMMENDATION"
+    },
+    "historical_evidence": {
+        "grade_transition": "A \u2192 D",
+        "historical_observations": 1920,
+        "success_count": 1080,
+        "failure_count": 840,
+        "success_rate_pct": 56.25,
+        "failure_rate_pct": 43.75,
+        "off_spec_rate_pct": 43.438,
+        "average_stabilization_time_min": 48.938,
+        "median_stabilization_time_min": 51.5,
+        "minimum_stabilization_time_min": 

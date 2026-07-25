@@ -252,12 +252,16 @@ def create_derived_features(
             f"{variable}_position_from_min"
         ] = (
             value - minimum
+        ) / (
+            maximum - minimum
         )
 
         row[
             f"{variable}_position_from_max"
         ] = (
             maximum - value
+        ) / (
+            maximum - minimum
         )
 
 
@@ -384,6 +388,29 @@ def generate_candidates(
     """
     Generate feasible candidate operating conditions.
     """
+    print("\n" + "=" * 70)
+    print("RECOMMENDATION DEBUG")
+    print("=" * 70)
+
+    print("Current machine speed:",
+          current_row["machine_speed"])
+
+    print("Current stock flow:",
+          current_row["stock_flow"])
+
+    print("Current steam pressure:",
+          current_row["steam_pressure"])
+
+    print("Generated speed values:",
+          speed_values)
+
+    print("Generated stock values:",
+          stock_values)
+
+    print("Generated steam values:",
+          steam_values)
+
+    print("=" * 70)
 
     candidates = []
 

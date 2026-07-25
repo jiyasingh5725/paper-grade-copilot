@@ -2,7 +2,8 @@ import os
 import json
 import joblib
 import pandas as pd
-from flask import Flask, jsonify, request
+
+from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 
 
@@ -47,10 +48,23 @@ EVIDENCE_PATH = os.path.join(
 # FLASK APPLICATION
 # ============================================================
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static")
+)
 
-# Allow HTML/CSS/JS frontend to communicate with Flask
 CORS(app)
+
+
+# ============================================================
+# FRONTEND
+# ============================================================
+
+@app.route("/", methods=["GET"])
+def home():
+
+    return render_template("index.html")
 
 
 # ============================================================
@@ -81,29 +95,35 @@ print("\nLoading trained models...")
 try:
 
     # --------------------------------------------------------
-    # Load XGBoost regression model
+    # Basis Weight Model
     # --------------------------------------------------------
 
     if not os.path.exists(BASIS_MODEL_PATH):
+
         raise FileNotFoundError(
             f"Basis weight model not found:\n{BASIS_MODEL_PATH}"
         )
 
-    basis_weight_model = joblib.load(BASIS_MODEL_PATH)
+    basis_weight_model = joblib.load(
+        BASIS_MODEL_PATH
+    )
 
     print("Basis Weight model loaded successfully.")
 
 
     # --------------------------------------------------------
-    # Load XGBoost classification model
+    # OFF-SPEC Model
     # --------------------------------------------------------
 
     if not os.path.exists(OFFSPEC_MODEL_PATH):
+
         raise FileNotFoundError(
             f"OFF-SPEC model not found:\n{OFFSPEC_MODEL_PATH}"
         )
 
-    off_spec_model = joblib.load(OFFSPEC_MODEL_PATH)
+    off_spec_model = joblib.load(
+        OFFSPEC_MODEL_PATH
+    )
 
     print("OFF-SPEC model loaded successfully.")
 
@@ -125,6 +145,7 @@ except Exception as e:
 try:
 
     if not os.path.exists(DATA_PATH):
+
         raise FileNotFoundError(
             f"Dataset not found:\n{DATA_PATH}"
         )
@@ -151,11 +172,334 @@ except Exception as e:
 def safe_float(value, default=0.0):
 
     try:
+
+        if pd.isna(value):
+            return default
+
         return float(value)
 
     except (TypeError, ValueError):
 
         return default
+
+
+# ============================================================
+# TRANSITION PHASE ENCODING
+# ============================================================
+
+def encode_transition_phase(value):
+
+    """
+    Converts transition phase text into a numerical value.
+
+    Expected logical order:
+
+    Before       -> 0
+    Transition   -> 1
+    Stabilization-> 2
+    Stable       -> 3
+    """
+
+    if pd.isna(value):
+
+        return 0
+
+    phase = str(value).strip().lower()
+
+    phase_mapping = {
+
+        "before": 0,
+        "pre-transition": 0,
+        "pre_transition": 0,
+
+        "transition": 1,
+
+        "stabilization": 2,
+        "stabilisation": 2,
+
+        "stable": 3,
+
+        "post-transition": 3,
+        "post_transition": 3
+    }
+
+    return phase_mapping.get(
+        phase,
+        0
+    )
+
+
+# ============================================================
+# FEATURE ENGINEERING FOR MODEL
+# ============================================================
+
+def prepare_model_features(row):
+    """
+    Recreates the engineered features used while training
+    the XGBoost model.
+
+    This is necessary because cleaned_data.csv contains
+    the base features, while the trained model expects
+    additional engineered features.
+    """
+
+    # --------------------------------------------------------
+    # Make a copy so original dataframe is not modified
+    # --------------------------------------------------------
+
+    row = row.copy()
+
+
+    # ========================================================
+    # BASIC PROCESS VALUES
+    # ========================================================
+
+    machine_speed = safe_float(
+        row.get("machine_speed")
+    )
+
+    stock_flow = safe_float(
+        row.get("stock_flow")
+    )
+
+    filler_flow = safe_float(
+        row.get("filler_flow")
+    )
+
+    steam_pressure = safe_float(
+        row.get("steam_pressure")
+    )
+
+    moisture = safe_float(
+        row.get("moisture")
+    )
+
+    ash = safe_float(
+        row.get("ash")
+    )
+
+    caliper = safe_float(
+        row.get("caliper")
+    )
+
+    basis_weight = safe_float(
+        row.get("basis_weight")
+    )
+
+    setpoint = safe_float(
+        row.get("basis_weight_setpoint")
+    )
+
+
+    # ========================================================
+    # POSITION FEATURES
+    # ========================================================
+
+    process_variables = [
+
+        "machine_speed",
+        "stock_flow",
+        "filler_flow",
+        "steam_pressure",
+        "moisture",
+        "ash",
+        "caliper"
+
+    ]
+
+
+    for variable in process_variables:
+
+        value = safe_float(
+            row.get(variable)
+        )
+
+        min_value = safe_float(
+            row.get(
+                f"{variable}_min"
+            )
+        )
+
+        max_value = safe_float(
+            row.get(
+                f"{variable}_max"
+            )
+        )
+
+
+        range_value = max_value - min_value
+
+
+        # ----------------------------------------------------
+        # Position between minimum and maximum
+        # ----------------------------------------------------
+
+        if range_value != 0:
+
+            position = (
+                value - min_value
+            ) / range_value
+
+            position_from_min = position
+
+            position_from_max = (
+                max_value - value
+            ) / range_value
+
+        else:
+
+            position = 0.0
+            position_from_min = 0.0
+            position_from_max = 0.0
+
+
+        row[
+            f"{variable}_position"
+        ] = position
+
+
+        row[
+            f"{variable}_position_from_min"
+        ] = position_from_min
+
+
+        row[
+            f"{variable}_position_from_max"
+        ] = position_from_max
+
+
+    # ========================================================
+    # GRADE CHANGE
+    # ========================================================
+
+    grade_from = str(
+        row.get(
+            "grade_from",
+            ""
+        )
+    )
+
+    grade_to = str(
+        row.get(
+            "grade_to",
+            ""
+        )
+    )
+
+
+    row["grade_changed"] = int(
+        grade_from.strip().lower()
+        !=
+        grade_to.strip().lower()
+    )
+
+
+    # ========================================================
+    # TRANSITION PHASE ENCODING
+    # ========================================================
+
+    row["transition_phase_encoded"] = encode_transition_phase(
+        row.get(
+            "transition_phase",
+            ""
+        )
+    )
+
+
+    # ========================================================
+    # OPERATOR ADJUSTMENT FLAG
+    # ========================================================
+
+    operator_action = str(
+        row.get(
+            "operator_action",
+            ""
+        )
+    ).strip().lower()
+
+
+    no_action_values = {
+
+        "",
+        "none",
+        "no_action",
+        "no action",
+        "nan",
+        "null"
+    }
+
+
+    row["operator_adjustment_flag"] = int(
+        operator_action not in no_action_values
+    )
+
+
+    # ========================================================
+    # RATIO FEATURES
+    # ========================================================
+
+    if stock_flow != 0:
+
+        row["speed_stock_ratio"] = (
+            machine_speed /
+            stock_flow
+        )
+
+        row["filler_stock_ratio"] = (
+            filler_flow /
+            stock_flow
+        )
+
+    else:
+
+        row["speed_stock_ratio"] = 0.0
+        row["filler_stock_ratio"] = 0.0
+
+
+    if moisture != 0:
+
+        row["steam_moisture_ratio"] = (
+            steam_pressure /
+            moisture
+        )
+
+    else:
+
+        row["steam_moisture_ratio"] = 0.0
+
+
+    # ========================================================
+    # BASIS WEIGHT ERROR
+    # ========================================================
+
+    row["basis_weight_error"] = (
+        basis_weight -
+        setpoint
+    )
+
+
+    # ========================================================
+    # BASIS WEIGHT ERROR DIRECTION
+    # ========================================================
+
+    if basis_weight > setpoint:
+
+        row["basis_weight_error_direction"] = 1
+
+    elif basis_weight < setpoint:
+
+        row["basis_weight_error_direction"] = -1
+
+    else:
+
+        row["basis_weight_error_direction"] = 0
+
+
+    # ========================================================
+    # RETURN ENGINEERED ROW
+    # ========================================================
+
+    return row
 
 
 # ============================================================
@@ -166,14 +510,23 @@ def safe_float(value, default=0.0):
 def health():
 
     return jsonify({
+
         "status": "running",
-        "application": "Paper Grade Transition Copilot",
+
+        "application":
+            "Paper Grade Transition Copilot",
+
         "models_loaded": (
             basis_weight_model is not None
             and off_spec_model is not None
         ),
-        "dataset_loaded": not df.empty,
-        "model_error": MODEL_LOAD_ERROR
+
+        "dataset_loaded":
+            not df.empty,
+
+        "model_error":
+            MODEL_LOAD_ERROR
+
     })
 
 
@@ -187,20 +540,32 @@ def summary():
     if df.empty:
 
         return jsonify({
+
             "success": False,
-            "message": "Dataset is not available."
+
+            "message":
+                "Dataset is not available."
+
         }), 500
 
 
     response = {
+
         "success": True,
-        "rows": int(len(df)),
-        "columns": int(len(df.columns)),
-        "transitions": int(
-            df["transition_id"].nunique()
-            if "transition_id" in df.columns
-            else 0
-        )
+
+        "rows":
+            int(len(df)),
+
+        "columns":
+            int(len(df.columns)),
+
+        "transitions":
+            int(
+                df["transition_id"].nunique()
+                if "transition_id" in df.columns
+                else 0
+            )
+
     }
 
 
@@ -228,8 +593,12 @@ def current_process():
     if df.empty:
 
         return jsonify({
+
             "success": False,
-            "message": "Dataset is not available."
+
+            "message":
+                "Dataset is not available."
+
         }), 500
 
 
@@ -240,49 +609,64 @@ def current_process():
 
         "success": True,
 
-        "transition_id": str(
-            row.get("transition_id", "")
-        ),
+        "transition_id":
+            str(row.get("transition_id", "")),
 
-        "grade_from": str(
-            row.get("grade_from", "")
-        ),
+        "grade_from":
+            str(row.get("grade_from", "")),
 
-        "grade_to": str(
-            row.get("grade_to", "")
-        ),
+        "grade_to":
+            str(row.get("grade_to", "")),
 
-        "machine_speed": safe_float(
-            row.get("machine_speed")
-        ),
+        "machine_speed":
+            safe_float(row.get("machine_speed")),
 
-        "stock_flow": safe_float(
-            row.get("stock_flow")
-        ),
+        "stock_flow":
+            safe_float(row.get("stock_flow")),
 
-        "steam_pressure": safe_float(
-            row.get("steam_pressure")
-        ),
+        "filler_flow":
+            safe_float(row.get("filler_flow")),
 
-        "basis_weight": safe_float(
-            row.get("basis_weight")
-        ),
+        "steam_pressure":
+            safe_float(row.get("steam_pressure")),
 
-        "basis_weight_setpoint": safe_float(
-            row.get("basis_weight_setpoint")
-        ),
+        "moisture":
+            safe_float(row.get("moisture")),
 
-        "future_basis_weight": safe_float(
-            row.get("future_basis_weight_5min")
-        ),
+        "ash":
+            safe_float(row.get("ash")),
 
-        "future_deviation_pct": safe_float(
-            row.get("future_deviation_pct")
-        ),
+        "caliper":
+            safe_float(row.get("caliper")),
 
-        "future_off_spec": int(
-            row.get("future_off_spec", 0)
-        )
+        "basis_weight":
+            safe_float(row.get("basis_weight")),
+
+        "basis_weight_setpoint":
+            safe_float(
+                row.get("basis_weight_setpoint")
+            ),
+
+        "future_basis_weight":
+            safe_float(
+                row.get("future_basis_weight_5min")
+            ),
+
+        "future_deviation_pct":
+            safe_float(
+                row.get("future_deviation_pct")
+            ),
+
+        "future_off_spec":
+            int(
+                safe_float(
+                    row.get(
+                        "future_off_spec",
+                        0
+                    )
+                )
+            )
+
     }
 
 
@@ -299,40 +683,66 @@ def predict():
     if basis_weight_model is None:
 
         return jsonify({
+
             "success": False,
-            "message": "Basis Weight model is not loaded.",
-            "error": MODEL_LOAD_ERROR
+
+            "message":
+                "Basis Weight model is not loaded.",
+
+            "error":
+                MODEL_LOAD_ERROR
+
         }), 500
 
 
     if df.empty:
 
         return jsonify({
+
             "success": False,
-            "message": "Dataset is not loaded."
+
+            "message":
+                "Dataset is not loaded."
+
         }), 500
 
 
     try:
 
-        data = request.get_json(silent=True) or {}
+        # ====================================================
+        # GET FRONTEND DATA
+        # ====================================================
+
+        data = request.get_json(
+            silent=True
+        ) or {}
 
 
-        # ----------------------------------------------------
-        # Use first row as the current process state
-        # ----------------------------------------------------
+        print("\nReceived prediction request:")
+        print(data)
+
+
+        # ====================================================
+        # USE FIRST ROW AS CURRENT PROCESS STATE
+        # ====================================================
 
         row = df.iloc[0].copy()
 
 
-        # ----------------------------------------------------
-        # Override values received from frontend
-        # ----------------------------------------------------
+        # ====================================================
+        # OVERRIDE CONTROLLABLE VALUES
+        # ====================================================
 
         controllable_columns = [
+
             "machine_speed",
             "stock_flow",
-            "steam_pressure"
+            "filler_flow",
+            "steam_pressure",
+            "moisture",
+            "ash",
+            "caliper"
+
         ]
 
 
@@ -341,14 +751,28 @@ def predict():
             if column in data:
 
                 row[column] = safe_float(
+
                     data[column],
-                    row[column]
+
+                    safe_float(
+                        row.get(column)
+                    )
+
                 )
 
 
-        # ----------------------------------------------------
-        # Model feature names
-        # ----------------------------------------------------
+        # ====================================================
+        # REBUILD ENGINEERED FEATURES
+        # ====================================================
+
+        row = prepare_model_features(
+            row
+        )
+
+
+        # ====================================================
+        # GET MODEL FEATURES
+        # ====================================================
 
         if hasattr(
             basis_weight_model,
@@ -362,24 +786,51 @@ def predict():
         else:
 
             return jsonify({
+
                 "success": False,
+
                 "message": (
-                    "Model does not expose feature_names_in_. "
-                    "Use the same preprocessing pipeline "
-                    "used during training."
+                    "Model does not expose "
+                    "feature_names_in_."
                 )
+
             }), 500
 
 
-        # ----------------------------------------------------
-        # Build input dataframe
-        # ----------------------------------------------------
+        # ====================================================
+        # DEBUG INFORMATION
+        # ====================================================
+
+        print("\n" + "=" * 70)
+        print("MODEL FEATURES")
+        print("=" * 70)
+
+        print("\nExpected features:")
+        print(model_features)
+
+        print("\nCurrent dataframe features:")
+        print(list(row.index))
+
+
+        # ====================================================
+        # CHECK MISSING FEATURES
+        # ====================================================
 
         missing_features = [
+
             feature
+
             for feature in model_features
+
             if feature not in row.index
+
         ]
+
+
+        print("\nMissing features:")
+        print(missing_features)
+
+        print("=" * 70)
 
 
         if missing_features:
@@ -389,90 +840,251 @@ def predict():
                 "success": False,
 
                 "message": (
-                    "Current process data does not contain "
-                    "all model features."
+                    "Current process data does not "
+                    "contain all model features."
                 ),
 
-                "missing_features": missing_features
+                "missing_features":
+                    missing_features
 
             }), 400
 
 
+        # ====================================================
+        # BUILD MODEL INPUT
+        # ====================================================
+
         X = pd.DataFrame(
-            [[row[feature] for feature in model_features]],
+
+            [
+                [
+                    row[feature]
+                    for feature in model_features
+                ]
+            ],
+
             columns=model_features
+
         )
 
 
-        # ----------------------------------------------------
-        # Prediction
-        # ----------------------------------------------------
+        # ====================================================
+        # CONVERT NUMERIC FEATURES
+        # ====================================================
 
-        prediction = basis_weight_model.predict(X)[0]
+        numeric_features = [
 
+            "machine_speed",
+            "stock_flow",
+            "filler_flow",
+            "steam_pressure",
+            "moisture",
+            "ash",
+            "caliper",
+            "basis_weight",
+            "basis_weight_setpoint",
+            "basis_weight_lag_1",
+            "basis_weight_lag_5",
+            "basis_weight_change_5min",
+            "speed_change_5min",
+            "stock_flow_change_5min",
+            "machine_speed_position",
+            "stock_flow_position",
+            "filler_flow_position",
+            "steam_pressure_position",
+            "moisture_position",
+            "ash_position",
+            "caliper_position",
+            "machine_speed_position_from_min",
+            "machine_speed_position_from_max",
+            "stock_flow_position_from_min",
+            "stock_flow_position_from_max",
+            "filler_flow_position_from_min",
+            "filler_flow_position_from_max",
+            "steam_pressure_position_from_min",
+            "steam_pressure_position_from_max",
+            "moisture_position_from_min",
+            "moisture_position_from_max",
+            "ash_position_from_min",
+            "ash_position_from_max",
+            "caliper_position_from_min",
+            "caliper_position_from_max",
+            "grade_changed",
+            "transition_phase_encoded",
+            "operator_adjustment_flag",
+            "speed_stock_ratio",
+            "steam_moisture_ratio",
+            "filler_stock_ratio",
+            "basis_weight_error",
+            "basis_weight_error_direction"
+
+        ]
+
+
+        for column in numeric_features:
+
+            if column in X.columns:
+
+                X[column] = pd.to_numeric(
+                    X[column],
+                    errors="coerce"
+                )
+
+
+        # ====================================================
+        # HANDLE MISSING NUMERIC VALUES
+        # ====================================================
+
+        X = X.replace(
+            [float("inf"), float("-inf")],
+            pd.NA
+        )
+
+
+        for column in numeric_features:
+
+            if column in X.columns:
+
+                X[column] = X[column].fillna(0)
+
+
+        print("\n" + "=" * 70)
+        print("FINAL MODEL INPUT")
+        print("=" * 70)
+
+        print(X.T)
+
+        print("=" * 70)
+        
+        # ====================================================
+        # MODEL PREDICTION
+        # ====================================================
+
+        prediction = basis_weight_model.predict(
+            X
+        )[0]
+
+
+        prediction = float(
+            prediction
+        )
+
+
+        # ====================================================
+        # SETPOINT
+        # ====================================================
 
         setpoint = safe_float(
+
             row.get(
                 "basis_weight_setpoint",
                 0
             )
+
         )
 
 
+        # ====================================================
+        # DEVIATION
+        # ====================================================
+
         if setpoint != 0:
 
-            deviation = abs(
-                prediction - setpoint
-            ) / setpoint * 100
+            deviation = (
+
+                abs(
+                    prediction -
+                    setpoint
+                )
+                /
+                setpoint
+                *
+                100
+
+            )
 
         else:
 
             deviation = 0
 
 
+        # ====================================================
+        # OFF-SPEC DECISION
+        # ====================================================
+
         off_spec = int(
             deviation > 2.5
         )
 
 
-        return jsonify({
+        # ====================================================
+        # RESPONSE
+        # ====================================================
+
+        response = {
 
             "success": True,
 
-            "predicted_basis_weight": round(
-                float(prediction),
-                3
-            ),
+            "predicted_basis_weight":
+                round(
+                    prediction,
+                    3
+                ),
 
-            "predicted_deviation_pct": round(
-                float(deviation),
-                3
-            ),
+            "predicted_deviation_pct":
+                round(
+                    float(deviation),
+                    3
+                ),
 
-            "off_spec": off_spec,
+            "off_spec":
+                off_spec,
 
             "status": (
+
                 "OFF-SPEC"
+
                 if off_spec
-                else "SAFE"
+
+                else
+
+                "SAFE"
+
             ),
 
-            "setpoint": round(
-                setpoint,
-                3
-            )
-        })
+            "setpoint":
+                round(
+                    setpoint,
+                    3
+                )
+
+        }
+
+
+        print("\nPrediction result:")
+        print(response)
+
+
+        return jsonify(
+            response
+        )
 
 
     except Exception as e:
+
+        print("\nPrediction error:")
+        print(str(e))
+
 
         return jsonify({
 
             "success": False,
 
-            "message": "Prediction failed.",
+            "message":
+                "Prediction failed.",
 
-            "error": str(e)
+            "error":
+                str(e)
 
         }), 500
 
@@ -484,15 +1096,17 @@ def predict():
 @app.route("/api/recommendations", methods=["GET"])
 def recommendations():
 
-    if not os.path.exists(RECOMMENDATION_PATH):
+    if not os.path.exists(
+        RECOMMENDATION_PATH
+    ):
 
         return jsonify({
 
             "success": False,
 
             "message": (
-                "Recommendation results are not available. "
-                "Run Stage 5 first."
+                "Recommendation results are "
+                "not available. Run Stage 5 first."
             )
 
         }), 404
@@ -505,14 +1119,20 @@ def recommendations():
         )
 
 
-        # Convert NaN values to None-compatible values
         recommendations_df = recommendations_df.where(
-            pd.notnull(recommendations_df),
+
+            pd.notnull(
+                recommendations_df
+            ),
+
             None
+
         )
 
 
-        records = recommendations_df.head(10).to_dict(
+        records = recommendations_df.head(
+            10
+        ).to_dict(
             orient="records"
         )
 
@@ -521,9 +1141,11 @@ def recommendations():
 
             "success": True,
 
-            "count": len(records),
+            "count":
+                len(records),
 
-            "recommendations": records
+            "recommendations":
+                records
 
         })
 
@@ -534,9 +1156,11 @@ def recommendations():
 
             "success": False,
 
-            "message": "Could not load recommendations.",
+            "message":
+                "Could not load recommendations.",
 
-            "error": str(e)
+            "error":
+                str(e)
 
         }), 500
 
@@ -548,7 +1172,9 @@ def recommendations():
 @app.route("/api/evidence", methods=["GET"])
 def evidence():
 
-    if not os.path.exists(EVIDENCE_PATH):
+    if not os.path.exists(
+        EVIDENCE_PATH
+    ):
 
         return jsonify({
 
@@ -565,19 +1191,26 @@ def evidence():
     try:
 
         with open(
+
             EVIDENCE_PATH,
+
             "r",
+
             encoding="utf-8"
+
         ) as file:
 
-            evidence_data = json.load(file)
+            evidence_data = json.load(
+                file
+            )
 
 
         return jsonify({
 
             "success": True,
 
-            "evidence": evidence_data
+            "evidence":
+                evidence_data
 
         })
 
@@ -588,9 +1221,11 @@ def evidence():
 
             "success": False,
 
-            "message": "Could not load historical evidence.",
+            "message":
+                "Could not load historical evidence.",
 
-            "error": str(e)
+            "error":
+                str(e)
 
         }), 500
 
@@ -608,7 +1243,8 @@ def dashboard():
 
             "success": False,
 
-            "message": "Dataset not loaded."
+            "message":
+                "Dataset not loaded."
 
         }), 500
 
@@ -622,15 +1258,26 @@ def dashboard():
 
 
     setpoint = safe_float(
-        row.get("basis_weight_setpoint")
+        row.get(
+            "basis_weight_setpoint"
+        )
     )
 
 
     if setpoint != 0:
 
-        current_deviation = abs(
-            current_bw - setpoint
-        ) / setpoint * 100
+        current_deviation = (
+
+            abs(
+                current_bw -
+                setpoint
+            )
+            /
+            setpoint
+            *
+            100
+
+        )
 
     else:
 
@@ -643,47 +1290,72 @@ def dashboard():
 
         "current_process": {
 
-            "transition_id": str(
-                row.get("transition_id", "")
-            ),
+            "transition_id":
+                str(
+                    row.get(
+                        "transition_id",
+                        ""
+                    )
+                ),
 
-            "grade_from": str(
-                row.get("grade_from", "")
-            ),
+            "grade_from":
+                str(
+                    row.get(
+                        "grade_from",
+                        ""
+                    )
+                ),
 
-            "grade_to": str(
-                row.get("grade_to", "")
-            ),
+            "grade_to":
+                str(
+                    row.get(
+                        "grade_to",
+                        ""
+                    )
+                ),
 
-            "machine_speed": current_process_value(
-                row,
-                "machine_speed"
-            ),
+            "machine_speed":
+                current_process_value(
+                    row,
+                    "machine_speed"
+                ),
 
-            "stock_flow": current_process_value(
-                row,
-                "stock_flow"
-            ),
+            "stock_flow":
+                current_process_value(
+                    row,
+                    "stock_flow"
+                ),
 
-            "steam_pressure": current_process_value(
-                row,
-                "steam_pressure"
-            ),
+            "steam_pressure":
+                current_process_value(
+                    row,
+                    "steam_pressure"
+                ),
 
-            "basis_weight": current_bw,
+            "basis_weight":
+                current_bw,
 
-            "setpoint": setpoint,
+            "setpoint":
+                setpoint,
 
-            "deviation_pct": round(
-                current_deviation,
-                3
-            ),
+            "deviation_pct":
+                round(
+                    current_deviation,
+                    3
+                ),
 
             "status": (
+
                 "OFF-SPEC / HIGH RISK"
+
                 if current_deviation > 2.5
-                else "SAFE"
+
+                else
+
+                "SAFE"
+
             )
+
         },
 
         "model_status": {
@@ -693,19 +1365,25 @@ def dashboard():
 
             "off_spec_model_loaded":
                 off_spec_model is not None
+
         }
 
     }
 
 
-    return jsonify(result)
+    return jsonify(
+        result
+    )
 
 
 # ============================================================
 # SMALL HELPER FOR DASHBOARD
 # ============================================================
 
-def current_process_value(row, column):
+def current_process_value(
+    row,
+    column
+):
 
     return safe_float(
         row.get(column)
@@ -723,7 +1401,8 @@ def page_not_found(error):
 
         "success": False,
 
-        "message": "API endpoint not found."
+        "message":
+            "API endpoint not found."
 
     }), 404
 
@@ -734,13 +1413,30 @@ def page_not_found(error):
 
 if __name__ == "__main__":
 
-    print("\n" + "=" * 70)
-    print("Starting Flask API...")
-    print("URL: http://127.0.0.1:5000")
-    print("=" * 70)
+    print(
+        "\n" +
+        "=" * 70
+    )
+
+    print(
+        "Starting Flask API..."
+    )
+
+    print(
+        "URL: http://127.0.0.1:5000"
+    )
+
+    print(
+        "=" * 70
+    )
+
 
     app.run(
+
         host="127.0.0.1",
+
         port=5000,
+
         debug=True
+
     )

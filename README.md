@@ -277,7 +277,7 @@ The interactive dashboard provides real-time monitoring, prediction results, AI 
 
 ### Main Dashboard
 
-![Paper Grade Copilot Dashboard](reports/screenshots/img1.png)
+![Paper Grade Copilot Dashboard](reports/screenshorts/img1.png)
 
 
 ### Live Prediction Module
@@ -289,25 +289,25 @@ The prediction module displays:
 - Process Stability Status
 - Current Process Parameters
 
-![Live Prediction](reports/screenshots/img2.png)
+![Live Prediction](reports/screenshorts/img2.png)
 
-![Live Prediction](reports/screenshots/img3.png)
+![Live Prediction](reports/screenshorts/img3.png)
 ### AI Recommendation Engine
 
 The recommendation engine suggests optimal process parameter adjustments to minimize deviation and maintain production stability.
 
-![AI Recommendation](reports/screenshots/img4.png)
+![AI Recommendation](reports/screenshorts/img4.png)
 
-![AI Recommendation](reports/screenshots/img5.png)
+![AI Recommendation](reports/screenshorts/img5.png)
 
 
 ### Historical Stabilization Evidence
 
 The system provides previously successful transition examples to support operator decisions.
 
-![Historical Evidence](reports/screenshots/img6.png)
+![Historical Evidence](reports/screenshorts/img6.png)
 
-![Historical Evidence](reports/screenshots/img7.png)
+![Historical Evidence](reports/screenshorts/img7.png)
 ---
 
 ---

@@ -6,6 +6,9 @@ import numpy as np
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 
+import sqlite3
+from datetime import datetime
+
 
 # ============================================================
 # PATH CONFIGURATION
@@ -42,6 +45,33 @@ EVIDENCE_PATH = os.path.join(
     REPORT_DIR,
     "stabilization_evidence.json"
 )
+
+# ============================================================
+# DATABASE CONFIGURATION & INITIALIZATION
+# ============================================================
+
+DB_PATH = os.path.join(BASE_DIR, "recommendations.db")
+
+def init_db():
+    """Creates the SQLite database and decisions table if they don't exist."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS operator_decisions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            transition_id TEXT,
+            decision TEXT CHECK(decision IN ('yes', 'no')),
+            recommended_speed REAL,
+            recommended_stock REAL,
+            recommended_steam REAL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Call DB initialization on startup
+init_db()
 
 
 # ============================================================
@@ -1437,6 +1467,53 @@ def recommendations():
         }), 500
 
 
+# ============================================================
+# RECOMMENDATION RESPONSE API
+# ============================================================
+
+@app.route("/api/recommendation-response", methods=["POST"])
+def recommendation_response():
+    try:
+        data = request.get_json(silent=True) or {}
+        
+        decision = data.get("decision")  # Should be 'yes' or 'no'
+        transition_id = data.get("transition_id")
+        recommended_speed = data.get("machine_speed")
+        recommended_stock = data.get("stock_flow")
+        recommended_steam = data.get("steam_pressure")
+
+        if decision not in ["yes", "no"]:
+            return jsonify({
+                "success": False,
+                "message": "Invalid decision value. Expected 'yes' or 'no'."
+            }), 400
+
+        # Save decision into SQLite Database
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO operator_decisions 
+            (transition_id, decision, recommended_speed, recommended_stock, recommended_steam)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (transition_id, decision, recommended_speed, recommended_stock, recommended_steam))
+        
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "message": f"Decision '{decision}' saved successfully to SQLite database."
+        })
+
+    except Exception as e:
+        print("\nDatabase insertion error:", str(e))
+        return jsonify({
+            "success": False,
+            "message": "Failed to save decision.",
+            "error": str(e)
+        }), 500
+        
+        
 # ============================================================
 # STABILIZATION + HISTORICAL EVIDENCE API
 # ============================================================

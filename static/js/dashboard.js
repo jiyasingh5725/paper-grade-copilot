@@ -1233,39 +1233,65 @@ function displayRecommendation(recommendation) {
     }
 }
 
+/* ============================================================
+   SAVE DECISION TO DATABASE
+============================================================ */
+
+async function saveDecisionToDB(decisionValue) {
+    if (!latestRecommendation) {
+        alert("No recommendation is available to record.");
+        return;
+    }
+
+    const payload = {
+        decision: decisionValue, // "yes" or "no"
+        transition_id: currentProcess?.transition_id || "N/A",
+        machine_speed: latestRecommendation.machine_speed,
+        stock_flow: latestRecommendation.stock_flow,
+        steam_pressure: latestRecommendation.steam_pressure
+    };
+
+    try {
+        const response = await fetch(`${API_BASE}/api/recommendation-response`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            console.error("Failed to store decision:", data.message);
+        } else {
+            console.log(`Successfully stored decision ('${decisionValue}') into SQLite database.`);
+        }
+    } catch (error) {
+        console.error("Error connecting to backend database endpoint:", error);
+    }
+}
+
 
 /* ============================================================
    ACCEPT RECOMMENDATION
 ============================================================ */
 
 function acceptRecommendation() {
-
     if (!latestRecommendation) {
-
-        alert(
-            "No recommendation is available to accept."
-        );
-
+        alert("No recommendation is available to accept.");
         return;
     }
 
+    const review = getElement("operatorReview");
+    review.classList.remove("rejected");
+    review.classList.add("accepted");
 
-    const review =
-        getElement("operatorReview");
-
-
-    review.classList.remove(
-        "rejected"
-    );
-
-    review.classList.add(
-        "accepted"
-    );
-
-
-    getElement("operatorReviewText")
-        .textContent =
+    getElement("operatorReviewText").textContent =
         "Recommendation accepted for operator review. The system does not automatically change machine parameters.";
+
+    // Store "yes" in database
+    saveDecisionToDB("yes");
 }
 
 
@@ -1274,33 +1300,20 @@ function acceptRecommendation() {
 ============================================================ */
 
 function rejectRecommendation() {
-
     if (!latestRecommendation) {
-
-        alert(
-            "No recommendation is available to reject."
-        );
-
+        alert("No recommendation is available to reject.");
         return;
     }
 
+    const review = getElement("operatorReview");
+    review.classList.remove("accepted");
+    review.classList.add("rejected");
 
-    const review =
-        getElement("operatorReview");
-
-
-    review.classList.remove(
-        "accepted"
-    );
-
-    review.classList.add(
-        "rejected"
-    );
-
-
-    getElement("operatorReviewText")
-        .textContent =
+    getElement("operatorReviewText").textContent =
         "Recommendation rejected by the operator. No process parameters have been changed.";
+
+    // Store "no" in database
+    saveDecisionToDB("no");
 }
 
 

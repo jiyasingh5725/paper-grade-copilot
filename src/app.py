@@ -2,7 +2,7 @@ import os
 import json
 import joblib
 import pandas as pd
-
+import numpy as np
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 
@@ -30,7 +30,7 @@ OFFSPEC_MODEL_PATH = os.path.join(
 
 DATA_PATH = os.path.join(
     DATA_DIR,
-    "cleaned_data.csv"
+    "ml_features.csv"
 )
 
 RECOMMENDATION_PATH = os.path.join(
@@ -593,81 +593,76 @@ def current_process():
     if df.empty:
 
         return jsonify({
-
             "success": False,
-
-            "message":
-                "Dataset is not available."
-
+            "message": "Dataset is not available."
         }), 500
 
+
+    # ----------------------------------------------------------
+    # Select current process row
+    # ----------------------------------------------------------
 
     row = df.iloc[0]
 
 
-    result = {
+    # ----------------------------------------------------------
+    # Convert complete row to dictionary
+    # ----------------------------------------------------------
 
-        "success": True,
+    result = {}
 
-        "transition_id":
-            str(row.get("transition_id", "")),
+    for column in df.columns:
 
-        "grade_from":
-            str(row.get("grade_from", "")),
+        value = row[column]
 
-        "grade_to":
-            str(row.get("grade_to", "")),
+        # Handle missing values
+        if pd.isna(value):
+            result[column] = None
 
-        "machine_speed":
-            safe_float(row.get("machine_speed")),
-
-        "stock_flow":
-            safe_float(row.get("stock_flow")),
-
-        "filler_flow":
-            safe_float(row.get("filler_flow")),
-
-        "steam_pressure":
-            safe_float(row.get("steam_pressure")),
-
-        "moisture":
-            safe_float(row.get("moisture")),
-
-        "ash":
-            safe_float(row.get("ash")),
-
-        "caliper":
-            safe_float(row.get("caliper")),
-
-        "basis_weight":
-            safe_float(row.get("basis_weight")),
-
-        "basis_weight_setpoint":
-            safe_float(
-                row.get("basis_weight_setpoint")
-            ),
-
-        "future_basis_weight":
-            safe_float(
-                row.get("future_basis_weight_5min")
-            ),
-
-        "future_deviation_pct":
-            safe_float(
-                row.get("future_deviation_pct")
-            ),
-
-        "future_off_spec":
-            int(
-                safe_float(
-                    row.get(
-                        "future_off_spec",
-                        0
-                    )
-                )
+        # Convert NumPy numeric types
+        elif isinstance(
+            value,
+            (
+                np.integer,
+                np.int32,
+                np.int64
             )
+        ):
 
-    }
+            result[column] = int(value)
+
+        elif isinstance(
+            value,
+            (
+                np.floating,
+                np.float32,
+                np.float64
+            )
+        ):
+
+            result[column] = float(value)
+
+        # Convert NumPy boolean
+        elif isinstance(value, np.bool_):
+
+            result[column] = bool(value)
+
+        # Convert timestamps
+        elif isinstance(value, pd.Timestamp):
+
+            result[column] = value.isoformat()
+
+        # Everything else
+        else:
+
+            result[column] = value
+
+
+    # ----------------------------------------------------------
+    # Add API status flag
+    # ----------------------------------------------------------
+
+    result["success"] = True
 
 
     return jsonify(result)
@@ -718,19 +713,39 @@ def predict():
         ) or {}
 
 
-        print("\nReceived prediction request:")
+        print("\n" + "=" * 70)
+        print("RECEIVED PREDICTION REQUEST")
+        print("=" * 70)
+
         print(data)
 
 
         # ====================================================
-        # USE FIRST ROW AS CURRENT PROCESS STATE
+        # CURRENT PROCESS ROW
+        # ====================================================
+        #
+        # We use the first row only as the base transition
+        # context.
+        #
+        # The 7 controllable variables below are replaced
+        # with values coming from the dashboard.
+        #
         # ====================================================
 
-        row = df.iloc[0].copy()
+        transition_id = data.get("transition_id")
+
+        if transition_id:
+            row = (
+             df[df["transition_id"] == transition_id]
+            .iloc[0]
+            .copy()
+        )
+        else:
+             row = df.sample(1).iloc[0].copy()
 
 
         # ====================================================
-        # OVERRIDE CONTROLLABLE VALUES
+        # REQUIRED CONTROLLABLE VARIABLES
         # ====================================================
 
         controllable_columns = [
@@ -746,19 +761,108 @@ def predict():
         ]
 
 
+        # ====================================================
+        # VALIDATE CONTROLLABLE INPUTS
+        # ====================================================
+
+        process_limits = {
+
+            "machine_speed": (700, 900),
+
+            "stock_flow": (50, 80),
+
+            "filler_flow": (10, 30),
+
+            "steam_pressure": (4, 6),
+
+            "moisture": (5.5, 7.5),
+
+            "ash": (6, 12),
+
+            "caliper": (80, 140)
+
+        }
+
+
         for column in controllable_columns:
 
-            if column in data:
+            if column not in data:
 
-                row[column] = safe_float(
+                return jsonify({
 
-                    data[column],
+                    "success": False,
 
-                    safe_float(
-                        row.get(column)
+                    "message":
+                        f"Missing required input: {column}"
+
+                }), 400
+
+
+            try:
+
+                value = float(
+                    data[column]
+                )
+
+            except (
+                TypeError,
+                ValueError
+            ):
+
+                return jsonify({
+
+                    "success": False,
+
+                    "message":
+                        f"Invalid numeric value for {column}."
+
+                }), 400
+
+
+            minimum, maximum = (
+                process_limits[column]
+            )
+
+
+            if (
+                value < minimum
+                or
+                value > maximum
+            ):
+
+                return jsonify({
+
+                    "success": False,
+
+                    "message": (
+                        f"{column} must be between "
+                        f"{minimum} and {maximum}."
                     )
 
-                )
+                }), 400
+
+
+            row[column] = value
+
+
+        # ====================================================
+        # KEEP CURRENT TRANSITION CONTEXT
+        # ====================================================
+
+        #
+        # These values come from the current transition:
+        #
+        # grade_from
+        # grade_to
+        # recipe_id
+        # transition_phase
+        # operator_action
+        # basis_weight
+        # basis_weight_setpoint
+        #
+        # They are NOT dashboard controls.
+        #
+        # ====================================================
 
 
         # ====================================================
@@ -767,6 +871,67 @@ def predict():
 
         row = prepare_model_features(
             row
+        )
+
+
+        # ====================================================
+        # REBUILD CHANGE FEATURES
+        # ====================================================
+
+        #
+        # Important:
+        # The original prepare_model_features() calculates
+        # process positions and ratios, but your model also
+        # expects:
+        #
+        # speed_change_5min
+        # stock_flow_change_5min
+        #
+        # We calculate them relative to the current row
+        # before dashboard changes.
+        #
+        # ====================================================
+
+        original_row = df.iloc[0]
+
+
+        original_machine_speed = safe_float(
+            original_row.get(
+                "machine_speed"
+            )
+        )
+
+
+        original_stock_flow = safe_float(
+            original_row.get(
+                "stock_flow"
+            )
+        )
+
+
+        row["speed_change_5min"] = (
+
+            safe_float(
+                row.get(
+                    "machine_speed"
+                )
+            )
+            -
+            original_machine_speed
+
+        )
+
+
+        row["stock_flow_change_5min"] = (
+
+            safe_float(
+                row.get(
+                    "stock_flow"
+                )
+            )
+            -
+            original_stock_flow
+
         )
 
 
@@ -797,19 +962,8 @@ def predict():
             }), 500
 
 
-        # ====================================================
-        # DEBUG INFORMATION
-        # ====================================================
-
-        print("\n" + "=" * 70)
-        print("MODEL FEATURES")
-        print("=" * 70)
-
-        print("\nExpected features:")
+        print("\nExpected model features:")
         print(model_features)
-
-        print("\nCurrent dataframe features:")
-        print(list(row.index))
 
 
         # ====================================================
@@ -827,13 +981,11 @@ def predict():
         ]
 
 
-        print("\nMissing features:")
-        print(missing_features)
-
-        print("=" * 70)
-
-
         if missing_features:
+
+            print("\nMissing features:")
+            print(missing_features)
+
 
             return jsonify({
 
@@ -869,7 +1021,7 @@ def predict():
 
 
         # ====================================================
-        # CONVERT NUMERIC FEATURES
+        # NUMERIC FEATURES
         # ====================================================
 
         numeric_features = [
@@ -881,13 +1033,18 @@ def predict():
             "moisture",
             "ash",
             "caliper",
+
             "basis_weight",
             "basis_weight_setpoint",
+
             "basis_weight_lag_1",
             "basis_weight_lag_5",
+
             "basis_weight_change_5min",
+
             "speed_change_5min",
             "stock_flow_change_5min",
+
             "machine_speed_position",
             "stock_flow_position",
             "filler_flow_position",
@@ -895,49 +1052,77 @@ def predict():
             "moisture_position",
             "ash_position",
             "caliper_position",
+
             "machine_speed_position_from_min",
             "machine_speed_position_from_max",
+
             "stock_flow_position_from_min",
             "stock_flow_position_from_max",
+
             "filler_flow_position_from_min",
             "filler_flow_position_from_max",
+
             "steam_pressure_position_from_min",
             "steam_pressure_position_from_max",
+
             "moisture_position_from_min",
             "moisture_position_from_max",
+
             "ash_position_from_min",
             "ash_position_from_max",
+
             "caliper_position_from_min",
             "caliper_position_from_max",
+
             "grade_changed",
+
             "transition_phase_encoded",
+
             "operator_adjustment_flag",
+
             "speed_stock_ratio",
+
             "steam_moisture_ratio",
+
             "filler_stock_ratio",
+
             "basis_weight_error",
+
             "basis_weight_error_direction"
 
         ]
 
+
+        # ====================================================
+        # CONVERT NUMERIC VALUES
+        # ====================================================
 
         for column in numeric_features:
 
             if column in X.columns:
 
                 X[column] = pd.to_numeric(
+
                     X[column],
+
                     errors="coerce"
+
                 )
 
 
         # ====================================================
-        # HANDLE MISSING NUMERIC VALUES
+        # HANDLE INF / NAN
         # ====================================================
 
         X = X.replace(
-            [float("inf"), float("-inf")],
-            pd.NA
+
+            [
+                float("inf"),
+                float("-inf")
+            ],
+
+            np.nan
+
         )
 
 
@@ -948,17 +1133,12 @@ def predict():
                 X[column] = X[column].fillna(0)
 
 
-        print("\n" + "=" * 70)
-        print("FINAL MODEL INPUT")
-        print("=" * 70)
-
-        print(X.T)
-
-        print("=" * 70)
-        
         # ====================================================
         # MODEL PREDICTION
         # ====================================================
+
+        predicted_off_spec = None
+        off_spec_probability = None
 
         prediction = basis_weight_model.predict(
             X
@@ -968,6 +1148,41 @@ def predict():
         prediction = float(
             prediction
         )
+
+        if off_spec_model is not None:
+
+            try:
+
+                predicted_off_spec = int(
+                    off_spec_model.predict(
+                        X
+                    )[0]
+                )
+
+                if hasattr(
+                    off_spec_model,
+                    "predict_proba"
+                ):
+
+                    probabilities = (
+                        off_spec_model.predict_proba(
+                            X
+                        )
+                    )
+
+                    if (
+                        probabilities is not None and
+                        probabilities.shape[1] >= 2
+                    ):
+
+                        off_spec_probability = float(
+                            probabilities[0][1]
+                        )
+
+            except Exception:
+
+                predicted_off_spec = None
+                off_spec_probability = None
 
 
         # ====================================================
@@ -993,7 +1208,8 @@ def predict():
             deviation = (
 
                 abs(
-                    prediction -
+                    prediction
+                    -
                     setpoint
                 )
                 /
@@ -1009,11 +1225,40 @@ def predict():
 
 
         # ====================================================
-        # OFF-SPEC DECISION
+        # SAFETY THRESHOLD
         # ====================================================
 
-        off_spec = int(
-            deviation > 2.5
+        SAFETY_THRESHOLD = 2.5
+
+        if predicted_off_spec is None:
+
+            off_spec = int(
+
+                deviation
+                >
+                SAFETY_THRESHOLD
+
+            )
+
+        else:
+
+            off_spec = predicted_off_spec
+
+
+        # ====================================================
+        # STATUS
+        # ====================================================
+
+        status = (
+
+            "OFF-SPEC"
+
+            if off_spec
+
+            else
+
+            "SAFE"
+
         )
 
 
@@ -1037,26 +1282,53 @@ def predict():
                     3
                 ),
 
+            "predicted_off_spec":
+                int(
+                    off_spec
+                ),
+
+            "off_spec_probability":
+                off_spec_probability,
+
             "off_spec":
                 off_spec,
 
-            "status": (
-
-                "OFF-SPEC"
-
-                if off_spec
-
-                else
-
-                "SAFE"
-
-            ),
+            "status":
+                status,
 
             "setpoint":
                 round(
                     setpoint,
                     3
-                )
+                ),
+
+            "safety_threshold_pct":
+                SAFETY_THRESHOLD,
+
+            "inputs": {
+
+                "machine_speed":
+                    row["machine_speed"],
+
+                "stock_flow":
+                    row["stock_flow"],
+
+                "filler_flow":
+                    row["filler_flow"],
+
+                "steam_pressure":
+                    row["steam_pressure"],
+
+                "moisture":
+                    row["moisture"],
+
+                "ash":
+                    row["ash"],
+
+                "caliper":
+                    row["caliper"]
+
+            }
 
         }
 

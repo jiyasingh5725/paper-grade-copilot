@@ -36,6 +36,225 @@ function formatNumber(value, decimals = 3) {
 
 
 /* ============================================================
+   SAFE NUMBER HELPER
+   Converts valid values to numbers.
+   Returns null for missing values.
+============================================================ */
+
+function safeNumber(value) {
+
+    if (
+        value === null ||
+        value === undefined ||
+        value === "" ||
+        value === "null" ||
+        value === "None"
+    ) {
+        return null;
+    }
+
+    const number = Number(value);
+
+    return Number.isFinite(number)
+        ? number
+        : null;
+}
+
+
+/* ============================================================
+   BUILD COMPLETE MODEL INPUT
+============================================================ */
+
+function buildModelPayload() {
+
+    /*
+     * Build the complete payload required by the Flask API.
+     *
+     * The current process returned by /api/current-process
+     * provides the complete transition context.
+     *
+     * The operator can modify only the controllable process
+     * variables from the dashboard.
+     */
+
+    if (!currentProcess) {
+
+        throw new Error(
+            "Current process data is not available."
+        );
+
+    }
+
+
+    const payload = {};
+
+
+    /* ========================================================
+       COPY CURRENT PROCESS VALUES
+    ======================================================== */
+
+    const fields = [
+
+        "timestamp",
+        "transition_id",
+
+        "grade_from",
+        "grade_to",
+
+        "recipe_id",
+        "transition_phase",
+        "transition_outcome",
+        "operator_action",
+
+        "machine_speed",
+        "stock_flow",
+        "filler_flow",
+        "steam_pressure",
+
+        "moisture",
+        "ash",
+        "caliper",
+
+        "basis_weight",
+        "basis_weight_setpoint",
+
+        "machine_speed_min",
+        "machine_speed_max",
+
+        "stock_flow_min",
+        "stock_flow_max",
+
+        "filler_flow_min",
+        "filler_flow_max",
+
+        "steam_pressure_min",
+        "steam_pressure_max",
+
+        "moisture_min",
+        "moisture_max",
+
+        "ash_min",
+        "ash_max",
+
+        "caliper_min",
+        "caliper_max",
+
+        "basis_weight_lag_1",
+        "basis_weight_lag_5",
+
+        "basis_weight_change_5min",
+
+        "speed_change_5min",
+        "stock_flow_change_5min",
+
+        "future_basis_weight_5min",
+        "future_deviation_pct",
+        "future_off_spec",
+
+        "stabilization_time_min",
+
+        "deviation_pct",
+        "off_spec",
+
+        "grade_transition"
+    ];
+
+
+    fields.forEach(field => {
+
+        if (
+            currentProcess[field] !== undefined &&
+            currentProcess[field] !== null
+        ) {
+
+            payload[field] = currentProcess[field];
+
+        }
+
+    });
+
+
+    /* ========================================================
+       OVERRIDE USER-CONTROLLED VARIABLES
+    ======================================================== */
+
+    payload.machine_speed = Number(
+        getElement("machineSpeed").value
+    );
+
+    payload.stock_flow = Number(
+        getElement("stockFlow").value
+    );
+
+    payload.filler_flow = Number(
+        getElement("fillerFlow").value
+    );
+
+    payload.steam_pressure = Number(
+        getElement("steamPressure").value
+    );
+
+    payload.moisture = Number(
+        getElement("moisture").value
+    );
+
+    payload.ash = Number(
+        getElement("ash").value
+    );
+
+    payload.caliper = Number(
+        getElement("caliper").value
+    );
+
+
+    /* ========================================================
+       ENSURE REQUIRED MODEL VALUES EXIST
+    ======================================================== */
+
+    payload.basis_weight = safeNumber(
+        payload.basis_weight ??
+        currentProcess.basis_weight
+    );
+
+    payload.basis_weight_setpoint = safeNumber(
+        payload.basis_weight_setpoint ??
+        currentProcess.basis_weight_setpoint
+    );
+
+
+    /* ========================================================
+       REMOVE UNDEFINED VALUES
+    ======================================================== */
+
+    Object.keys(payload).forEach(key => {
+
+        if (
+            payload[key] === undefined ||
+            payload[key] === null
+        ) {
+
+            delete payload[key];
+
+        }
+
+    });
+
+
+    /* ========================================================
+       DEBUG LOG
+    ======================================================== */
+
+    console.log(
+        "Complete prediction payload:",
+        payload
+    );
+
+    return payload;
+
+}
+
+
+/* ============================================================
    SYSTEM HEALTH
 ============================================================ */
 
@@ -117,7 +336,20 @@ async function loadCurrentProcess() {
         }
 
 
+        /*
+         * Store the complete current process.
+         *
+         * This is extremely important because prediction
+         * requires more than the three visible inputs.
+         */
+
         currentProcess = data;
+
+
+        console.log(
+            "Current process loaded:",
+            currentProcess
+        );
 
 
         /* -----------------------------------------------------
@@ -214,23 +446,43 @@ async function loadCurrentProcess() {
    INPUT VALIDATION
 ============================================================ */
 
+/* ============================================================
+   INPUT VALIDATION
+============================================================ */
+
 function validateInputs() {
 
-    const machineSpeed =
-        Number(
-            getElement("machineSpeed").value
-        );
+    const machineSpeed = Number(
+        getElement("machineSpeed").value
+    );
 
-    const stockFlow =
-        Number(
-            getElement("stockFlow").value
-        );
+    const stockFlow = Number(
+        getElement("stockFlow").value
+    );
 
-    const steamPressure =
-        Number(
-            getElement("steamPressure").value
-        );
+    const fillerFlow = Number(
+        getElement("fillerFlow").value
+    );
 
+    const steamPressure = Number(
+        getElement("steamPressure").value
+    );
+
+    const moisture = Number(
+        getElement("moisture").value
+    );
+
+    const ash = Number(
+        getElement("ash").value
+    );
+
+    const caliper = Number(
+        getElement("caliper").value
+    );
+
+    /* ========================================================
+       Machine Speed
+    ======================================================== */
 
     if (
         isNaN(machineSpeed) ||
@@ -242,9 +494,14 @@ function validateInputs() {
             "Machine Speed must be between 700 and 900 m/min."
         );
 
+        getElement("machineSpeed").focus();
+
         return false;
     }
 
+    /* ========================================================
+       Stock Flow
+    ======================================================== */
 
     if (
         isNaN(stockFlow) ||
@@ -256,9 +513,33 @@ function validateInputs() {
             "Stock Flow must be between 50 and 80%."
         );
 
+        getElement("stockFlow").focus();
+
         return false;
     }
 
+    /* ========================================================
+       Filler Flow
+    ======================================================== */
+
+    if (
+        isNaN(fillerFlow) ||
+        fillerFlow < 10 ||
+        fillerFlow > 30
+    ) {
+
+        alert(
+            "Filler Flow must be between 10 and 30%."
+        );
+
+        getElement("fillerFlow").focus();
+
+        return false;
+    }
+
+    /* ========================================================
+       Steam Pressure
+    ======================================================== */
 
     if (
         isNaN(steamPressure) ||
@@ -270,9 +551,80 @@ function validateInputs() {
             "Steam Pressure must be between 4 and 6 bar."
         );
 
+        getElement("steamPressure").focus();
+
         return false;
     }
 
+    /* ========================================================
+       Moisture
+    ======================================================== */
+
+    if (
+        isNaN(moisture) ||
+        moisture < 5.5 ||
+        moisture > 7.5
+    ) {
+
+        alert(
+            "Moisture must be between 5.5 and 7.5%."
+        );
+
+        getElement("moisture").focus();
+
+        return false;
+    }
+
+    /* ========================================================
+       Ash
+    ======================================================== */
+
+    if (
+        isNaN(ash) ||
+        ash < 6 ||
+        ash > 12
+    ) {
+
+        alert(
+            "Ash must be between 6 and 12%."
+        );
+
+        getElement("ash").focus();
+
+        return false;
+    }
+
+    /* ========================================================
+       Caliper
+    ======================================================== */
+
+    if (
+        isNaN(caliper) ||
+        caliper < 80 ||
+        caliper > 140
+    ) {
+
+        alert(
+            "Caliper must be between 80 and 140 µm."
+        );
+
+        getElement("caliper").focus();
+
+        return false;
+    }
+
+    /* ========================================================
+       Current Process Check
+    ======================================================== */
+
+    if (!currentProcess) {
+
+        alert(
+            "Current process data is not loaded yet. Please wait and try again."
+        );
+
+        return false;
+    }
 
     return true;
 }
@@ -301,27 +653,25 @@ async function runPrediction() {
 
     try {
 
-        const payload = {
+        /*
+         * IMPORTANT CHANGE:
+         *
+         * Instead of sending only:
+         *
+         * machine_speed
+         * stock_flow
+         * steam_pressure
+         *
+         * we now send the complete current process state
+         * and override the three controllable values.
+         */
 
-            machine_speed:
-                Number(
-                    getElement("machineSpeed").value
-                ),
-
-            stock_flow:
-                Number(
-                    getElement("stockFlow").value
-                ),
-
-            steam_pressure:
-                Number(
-                    getElement("steamPressure").value
-                )
-        };
+        const payload =
+            buildModelPayload();
 
 
         console.log(
-            "Sending prediction request:",
+            "Sending COMPLETE prediction request:",
             payload
         );
 
@@ -350,6 +700,16 @@ async function runPrediction() {
             "Prediction result:",
             data
         );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message ||
+                data.error ||
+                "Prediction API returned an error."
+            );
+        }
 
 
         if (!data.success) {
@@ -434,7 +794,13 @@ function displayPrediction(data) {
         getElement("riskIcon");
 
 
-    if (Number(data.off_spec) === 1) {
+    const offSpecFlag = Number(
+        data.predicted_off_spec !== undefined
+            ? data.predicted_off_spec
+            : data.off_spec
+    );
+
+    if (offSpecFlag === 1) {
 
         /* -----------------------------------------------------
            RED / HIGH RISK
@@ -453,6 +819,7 @@ function displayPrediction(data) {
                 data.predicted_deviation_pct,
                 2
             )}% away from the target.`;
+
 
         statusElement.style.background =
             "#fff0f0";
@@ -474,6 +841,7 @@ function displayPrediction(data) {
 
         description.textContent =
             `Predicted Basis Weight is within the 2.5% specification limit.`;
+
 
         statusElement.style.background =
             "#edf8f2";
@@ -507,7 +875,10 @@ function createTrajectoryChart(data) {
 
     const target =
         Number(
-            data.setpoint || 0
+            data.setpoint ||
+            data.basis_weight_setpoint ||
+            currentProcess?.basis_weight_setpoint ||
+            0
         );
 
 
@@ -725,58 +1096,83 @@ async function loadRecommendations() {
    DISPLAY RECOMMENDATION
 ============================================================ */
 
-function displayRecommendation(
-    recommendation
-) {
+/* ============================================================
+   DISPLAY RECOMMENDATION
+============================================================ */
 
-    getElement("recommendedSpeed")
-        .textContent =
-        formatNumber(
-            recommendation.machine_speed
-        );
+function displayRecommendation(recommendation) {
 
+    /* ========================================================
+       Recommended Process Parameters
+    ======================================================== */
 
-    getElement("recommendedStock")
-        .textContent =
-        formatNumber(
-            recommendation.stock_flow
-        );
+    getElement("recommendedSpeed").textContent =
+        formatNumber(recommendation.machine_speed);
 
+    getElement("recommendedStock").textContent =
+        formatNumber(recommendation.stock_flow);
 
-    getElement("recommendedSteam")
-        .textContent =
-        formatNumber(
-            recommendation.steam_pressure
-        );
+    getElement("recommendedFiller").textContent =
+        formatNumber(recommendation.filler_flow);
 
+    getElement("recommendedSteam").textContent =
+        formatNumber(recommendation.steam_pressure);
 
-    getElement("recommendedBW")
-        .textContent =
-        formatNumber(
-            recommendation.predicted_basis_weight
-        );
+    getElement("recommendedMoisture").textContent =
+        formatNumber(recommendation.moisture);
 
+    getElement("recommendedAsh").textContent =
+        formatNumber(recommendation.ash);
 
-    getElement("recommendedDeviation")
-        .textContent =
+    getElement("recommendedCaliper").textContent =
+        formatNumber(recommendation.caliper);
+
+    /* ========================================================
+       Prediction Results
+    ======================================================== */
+
+    getElement("recommendedBW").textContent =
+        formatNumber(recommendation.predicted_basis_weight);
+
+    getElement("recommendedDeviation").textContent =
         `${formatNumber(
-            recommendation.predicted_deviation_pct
+            recommendation.predicted_deviation_pct,
+            2
         )}%`;
 
+    /* ========================================================
+       Risk Probability (Optional)
+    ======================================================== */
 
-    const status =
-        Number(
-            recommendation.off_spec
-        );
+    const riskElement =
+        document.getElementById("recommendedRisk");
 
+    if (
+        riskElement &&
+        recommendation.off_spec_probability !== undefined &&
+        recommendation.off_spec_probability !== null
+    ) {
+
+        riskElement.textContent =
+            `${formatNumber(
+                recommendation.off_spec_probability * 100,
+                1
+            )}%`;
+    }
+
+    /* ========================================================
+       Recommendation Status
+    ======================================================== */
+
+    const status = Number(
+        recommendation.off_spec
+    );
 
     const banner =
         getElement("recommendationBanner");
 
-
     const title =
         getElement("recommendationStatus");
-
 
     if (status === 0) {
 
@@ -789,10 +1185,8 @@ function displayRecommendation(
         banner.style.borderColor =
             "#b9dfc7";
 
-
-        getElement("operatorReviewText")
-            .textContent =
-            "The recommended operating point is predicted to remain within the 2.5% Basis Weight specification limit. Operator review is required before applying the process change.";
+        getElement("operatorReviewText").textContent =
+            "The recommended operating point is predicted to remain within the 2.5% Basis Weight specification limit. Review the suggested parameters before applying the process change.";
 
     } else {
 
@@ -805,10 +1199,37 @@ function displayRecommendation(
         banner.style.borderColor =
             "#e6b8b8";
 
+        getElement("operatorReviewText").textContent =
+            "No tested operating combination was predicted to satisfy the 2.5% Basis Weight specification limit. Operator intervention is recommended before changing machine settings.";
+    }
 
-        getElement("operatorReviewText")
-            .textContent =
-            "No tested operating combination was predicted to satisfy the 2.5% specification limit. Do not automatically apply an unsafe operating condition.";
+    /* ========================================================
+       Risk Banner Color (Optional)
+    ======================================================== */
+
+    if (
+        recommendation.off_spec_probability !== undefined &&
+        recommendation.off_spec_probability !== null
+    ) {
+
+        const probability =
+            recommendation.off_spec_probability * 100;
+
+        if (probability >= 70) {
+
+            banner.style.boxShadow =
+                "0 0 18px rgba(220,53,69,0.25)";
+
+        } else if (probability >= 30) {
+
+            banner.style.boxShadow =
+                "0 0 18px rgba(255,193,7,0.25)";
+
+        } else {
+
+            banner.style.boxShadow =
+                "0 0 18px rgba(25,135,84,0.20)";
+        }
     }
 }
 
@@ -1272,6 +1693,34 @@ function updateExplanation(
     explanations.push(
         `The system is evaluating the ${gradeFrom} → ${gradeTo} grade transition using historical evidence from Stage 6.`
     );
+
+
+    /* ---------------------------------------------------------
+       Explanation 5
+    --------------------------------------------------------- */
+
+    if (prediction) {
+
+        const speed =
+            safeNumber(
+                getElement("machineSpeed").value
+            );
+
+        const stock =
+            safeNumber(
+                getElement("stockFlow").value
+            );
+
+        const steam =
+            safeNumber(
+                getElement("steamPressure").value
+            );
+
+
+        explanations.push(
+            `The prediction uses the complete current process state while evaluating the requested operating point of ${formatNumber(speed, 3)} m/min machine speed, ${formatNumber(stock, 3)}% stock flow, and ${formatNumber(steam, 3)} bar steam pressure.`
+        );
+    }
 
 
     container.innerHTML = "";

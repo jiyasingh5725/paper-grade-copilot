@@ -1232,9 +1232,15 @@ top_candidates = candidate_df.sort_values(
 
 
 display_columns = [
+
     "machine_speed",
     "stock_flow",
+    "filler_flow",
     "steam_pressure",
+    "moisture",
+    "ash",
+    "caliper",
+
     "predicted_basis_weight",
     "predicted_deviation_pct",
     "off_spec",
@@ -1269,12 +1275,17 @@ top_candidates_path = (
 candidate_df[
     [
         "machine_speed",
-        "stock_flow",
-        "steam_pressure",
-        "predicted_basis_weight",
-        "predicted_deviation_pct",
-        "off_spec",
-        "change_penalty",
+            "stock_flow",
+            "filler_flow",
+            "steam_pressure",
+            "moisture",
+            "ash",
+            "caliper",
+        
+            "predicted_basis_weight",
+            "predicted_deviation_pct",
+            "off_spec",
+            "change_penalty",
     ]
 ].to_csv(
     all_candidates_path,

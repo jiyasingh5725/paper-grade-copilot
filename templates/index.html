@@ -5,855 +5,996 @@
 
     <meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Paper Grade Transition Copilot</title>
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 </head>
 
 
 <body>
 
-<div class="app-container">
+    <div class="app-container">
 
 
-    <!-- =====================================================
+        <!-- =====================================================
          HEADER
     ====================================================== -->
 
-    <header class="top-header">
-
-        <div>
-
-            <div class="eyebrow">
-                HONEYWELL AI DECISION SUPPORT
-            </div>
-
-            <h1>
-                Paper Grade Transition Copilot
-            </h1>
-
-            <p>
-                AI-driven grade change intelligence and
-                process decision support
-            </p>
-
-        </div>
-
-
-        <div class="system-status">
-
-            <span
-                id="statusDot"
-                class="status-dot"
-            ></span>
-
-            <span id="systemStatus">
-                Connecting...
-            </span>
-
-        </div>
-
-    </header>
-
-
-    <!-- =====================================================
-         TRANSITION BAR
-    ====================================================== -->
-
-    <section class="transition-bar">
-
-        <div class="transition-item">
-
-            <span class="label">
-                CURRENT TRANSITION
-            </span>
-
-            <strong id="transitionId">
-                --
-            </strong>
-
-        </div>
-
-
-        <div class="transition-arrow">
-            →
-        </div>
-
-
-        <div class="grade-box">
-
-            <span id="gradeFrom">
-                --
-            </span>
-
-            <span>→</span>
-
-            <span id="gradeTo">
-                --
-            </span>
-
-        </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         PROCESS INPUTS
-    ====================================================== -->
-
-    <section class="panel">
-
-        <div class="section-heading">
+        <header class="top-header">
 
             <div>
 
-                <span class="section-number">
-                    01
-                </span>
-
-                <h2>
-                    Process Inputs
-                </h2>
-
-            </div>
-
-            <span class="section-description">
-                Adjust controllable operating parameters
-            </span>
-
-        </div>
-
-
-        <div class="input-grid">
-
-
-            <!-- MACHINE SPEED -->
-
-            <div class="input-group">
-
-                <label for="machineSpeed">
-                    Machine Speed
-                </label>
-
-                <div class="input-with-unit">
-
-                    <input
-                        id="machineSpeed"
-                        type="number"
-                        step="0.001"
-                    >
-
-                    <span>
-                        m/min
-                    </span>
-
+                <div class="eyebrow">
+                    HONEYWELL AI DECISION SUPPORT
                 </div>
 
-                <small>
-                    Allowed: 700–900
-                </small>
+                <h1>
+                    Paper Grade Transition Copilot
+                </h1>
 
-            </div>
-
-
-            <!-- STOCK FLOW -->
-
-            <div class="input-group">
-
-                <label for="stockFlow">
-                    Stock Flow
-                </label>
-
-                <div class="input-with-unit">
-
-                    <input
-                        id="stockFlow"
-                        type="number"
-                        step="0.001"
-                    >
-
-                    <span>
-                        %
-                    </span>
-
-                </div>
-
-                <small>
-                    Allowed: 50–80
-                </small>
-
-            </div>
-
-
-            <!-- STEAM PRESSURE -->
-
-            <div class="input-group">
-
-                <label for="steamPressure">
-                    Steam Pressure
-                </label>
-
-                <div class="input-with-unit">
-
-                    <input
-                        id="steamPressure"
-                        type="number"
-                        step="0.001"
-                    >
-
-                    <span>
-                        bar
-                    </span>
-
-                </div>
-
-                <small>
-                    Allowed: 4–6
-                </small>
-
-            </div>
-
-
-            <!-- CURRENT BASIS WEIGHT -->
-
-            <div class="input-group">
-
-                <label>
-                    Current Basis Weight
-                </label>
-
-                <div class="readonly-value">
-
-                    <span id="currentBasisWeight">
-                        --
-                    </span>
-
-                    <span>
-                        GSM
-                    </span>
-
-                </div>
-
-            </div>
-
-
-            <!-- TARGET -->
-
-            <div class="input-group">
-
-                <label>
-                    Target Setpoint
-                </label>
-
-                <div class="readonly-value">
-
-                    <span id="targetSetpoint">
-                        --
-                    </span>
-
-                    <span>
-                        GSM
-                    </span>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <button
-            id="analyzeButton"
-            class="primary-button"
-        >
-
-            <span>
-                ANALYZE TRANSITION
-            </span>
-
-            <span>
-                →
-            </span>
-
-        </button>
-
-    </section>
-
-
-    <!-- =====================================================
-         AI PREDICTION
-    ====================================================== -->
-
-    <section class="panel">
-
-        <div class="section-heading">
-
-            <div>
-
-                <span class="section-number">
-                    02
-                </span>
-
-                <h2>
-                    AI Prediction
-                </h2>
-
-            </div>
-
-        </div>
-
-
-        <div
-            id="predictionStatus"
-            class="risk-banner"
-        >
-
-            <span
-                id="riskIcon"
-                class="risk-icon"
-            >
-                ⚠
-            </span>
-
-            <div>
-
-                <strong id="predictionStatusText">
-                    Waiting for analysis
-                </strong>
-
-                <p id="predictionDescription">
-                    Run the transition analysis to evaluate
-                    future Basis Weight.
+                <p>
+                    AI-driven grade change intelligence and
+                    process decision support
                 </p>
 
             </div>
 
-        </div>
 
+            <div class="system-status">
 
-        <div class="metrics-grid">
+                <span id="statusDot" class="status-dot"></span>
 
-
-            <div class="metric-card">
-
-                <span>
-                    Current Basis Weight
+                <span id="systemStatus">
+                    Connecting...
                 </span>
 
-                <strong id="metricCurrent">
+            </div>
+
+        </header>
+
+
+        <!-- =====================================================
+         TRANSITION BAR
+    ====================================================== -->
+
+        <section class="transition-bar">
+
+            <div class="transition-item">
+
+                <span class="label">
+                    CURRENT TRANSITION
+                </span>
+
+                <strong id="transitionId">
                     --
                 </strong>
-
-                <small>
-                    GSM
-                </small>
 
             </div>
 
 
-            <div class="metric-card">
-
-                <span>
-                    Target Setpoint
-                </span>
-
-                <strong id="metricTarget">
-                    --
-                </strong>
-
-                <small>
-                    GSM
-                </small>
-
+            <div class="transition-arrow">
+                →
             </div>
 
 
-            <div class="metric-card">
+            <div class="grade-box">
 
-                <span>
-                    Predicted Future
+                <span id="gradeFrom">
+                    --
                 </span>
 
-                <strong id="metricPredicted">
-                    --
-                </strong>
+                <span>→</span>
 
-                <small>
-                    GSM
-                </small>
+                <span id="gradeTo">
+                    --
+                </span>
 
             </div>
 
-
-            <div class="metric-card">
-
-                <span>
-                    Predicted Deviation
-                </span>
-
-                <strong id="metricDeviation">
-                    --
-                </strong>
-
-                <small>
-                    % from target
-                </small>
-
-            </div>
-
-        </div>
+        </section>
 
 
-        <!-- =================================================
-             TRAJECTORY CHART
-        ================================================== -->
+        <!-- =====================================================
+         PROCESS INPUTS
+    ====================================================== -->
 
-        <div class="chart-container">
+        <section class="panel">
 
-            <div class="chart-header">
+            <div class="section-heading">
 
                 <div>
 
-                    <h3>
-                        Basis Weight Trajectory
-                    </h3>
-
-                    <p>
-                        Current → predicted transition behavior
-                    </p>
-
-                </div>
-
-                <span class="chart-badge">
-                    AI PREDICTION
-                </span>
-
-            </div>
-
-
-            <canvas id="trajectoryChart"></canvas>
-
-        </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         AI RECOMMENDATION
-    ====================================================== -->
-
-    <section class="panel">
-
-        <div class="section-heading">
-
-            <div>
-
-                <span class="section-number">
-                    03
-                </span>
-
-                <h2>
-                    AI Recommendation
-                </h2>
-
-            </div>
-
-            <span class="section-description">
-                Constraint-aware operating recommendation
-            </span>
-
-        </div>
-
-
-        <div
-            id="recommendationBanner"
-            class="recommendation-banner"
-        >
-
-            <div>
-
-                <span class="recommendation-label">
-                    AI DECISION
-                </span>
-
-                <h3 id="recommendationStatus">
-                    Loading recommendation...
-                </h3>
-
-            </div>
-
-        </div>
-
-
-        <div class="recommendation-grid">
-
-
-            <div class="recommendation-card">
-
-                <span>
-                    Machine Speed
-                </span>
-
-                <strong id="recommendedSpeed">
-                    --
-                </strong>
-
-                <small>
-                    m/min
-                </small>
-
-            </div>
-
-
-            <div class="recommendation-card">
-
-                <span>
-                    Stock Flow
-                </span>
-
-                <strong id="recommendedStock">
-                    --
-                </strong>
-
-                <small>
-                    %
-                </small>
-
-            </div>
-
-
-            <div class="recommendation-card">
-
-                <span>
-                    Steam Pressure
-                </span>
-
-                <strong id="recommendedSteam">
-                    --
-                </strong>
-
-                <small>
-                    bar
-                </small>
-
-            </div>
-
-
-            <div class="recommendation-card">
-
-                <span>
-                    Expected Basis Weight
-                </span>
-
-                <strong id="recommendedBW">
-                    --
-                </strong>
-
-                <small>
-                    GSM
-                </small>
-
-            </div>
-
-
-            <div class="recommendation-card">
-
-                <span>
-                    Expected Deviation
-                </span>
-
-                <strong id="recommendedDeviation">
-                    --
-                </strong>
-
-                <small>
-                    % from target
-                </small>
-
-            </div>
-
-        </div>
-
-
-        <!-- ACCEPT / REJECT -->
-
-        <div class="decision-actions">
-
-            <button
-                id="acceptRecommendation"
-                class="decision-button accept-button"
-            >
-                ✓ ACCEPT RECOMMENDATION
-            </button>
-
-
-            <button
-                id="rejectRecommendation"
-                class="decision-button reject-button"
-            >
-                ✕ REJECT RECOMMENDATION
-            </button>
-
-        </div>
-
-
-        <div
-            id="operatorReview"
-            class="operator-review"
-        >
-
-            <strong>
-                ⚠ OPERATOR REVIEW REQUIRED
-            </strong>
-
-            <p id="operatorReviewText">
-                Recommendation results will appear here.
-            </p>
-
-        </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         HISTORICAL EVIDENCE
-    ====================================================== -->
-
-    <section class="panel">
-
-        <div class="section-heading">
-
-            <div>
-
-                <span class="section-number">
-                    04
-                </span>
-
-                <h2>
-                    Historical Evidence
-                </h2>
-
-            </div>
-
-        </div>
-
-
-        <div class="evidence-grid">
-
-
-            <div class="evidence-card">
-
-                <span>
-                    Historical Records
-                </span>
-
-                <strong id="evidenceRecords">
-                    --
-                </strong>
-
-            </div>
-
-
-            <div class="evidence-card">
-
-                <span>
-                    Success Rate
-                </span>
-
-                <strong id="successRate">
-                    --
-                </strong>
-
-            </div>
-
-
-            <div class="evidence-card">
-
-                <span>
-                    Failure Rate
-                </span>
-
-                <strong id="failureRate">
-                    --
-                </strong>
-
-            </div>
-
-
-            <div class="evidence-card">
-
-                <span>
-                    Stabilization
-                </span>
-
-                <strong id="stabilizationTime">
-                    --
-                </strong>
-
-            </div>
-
-        </div>
-
-
-        <div class="evidence-note">
-
-            <strong>
-                Evidence-based decision support
-            </strong>
-
-            <p id="evidenceMessage">
-                Historical transition evidence will be
-                loaded from Stage 6.
-            </p>
-
-        </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         EXPLAINABILITY
-    ====================================================== -->
-
-    <section class="panel">
-
-        <div class="section-heading">
-
-            <div>
-
-                <span class="section-number">
-                    05
-                </span>
-
-                <h2>
-                    Explainability
-                </h2>
-
-            </div>
-
-        </div>
-
-
-        <div class="explanation-box">
-
-            <h3>
-                Why did the AI make this decision?
-            </h3>
-
-            <div id="explanationContent">
-
-                <div class="explanation-item">
-
-                    <span class="explanation-number">
+                    <span class="section-number">
                         01
                     </span>
 
-                    <p>
-                        Prediction explanation will appear
-                        after analysis.
+                    <h2>
+                        Process Inputs
+                    </h2>
+
+                </div>
+
+                <span class="section-description">
+                    Adjust controllable operating parameters
+                </span>
+
+            </div>
+
+
+            <div class="input-grid">
+
+
+                <!-- =================================================
+                 MACHINE SPEED
+            ================================================== -->
+
+                <div class="input-group">
+
+                    <label for="machineSpeed">
+                        Machine Speed
+                    </label>
+
+                    <div class="input-with-unit">
+
+                        <input id="machineSpeed" type="number" step="0.001" min="700" max="900" placeholder="e.g. 810">
+
+                        <span>
+                            m/min
+                        </span>
+
+                    </div>
+
+                    <small>
+                        Allowed: 700–900
+                    </small>
+
+                </div>
+
+
+                <!-- =================================================
+                 STOCK FLOW
+            ================================================== -->
+
+                <div class="input-group">
+
+                    <label for="stockFlow">
+                        Stock Flow
+                    </label>
+
+                    <div class="input-with-unit">
+
+                        <input id="stockFlow" type="number" step="0.001" min="50" max="80" placeholder="e.g. 75">
+
+                        <span>
+                            %
+                        </span>
+
+                    </div>
+
+                    <small>
+                        Allowed: 50–80
+                    </small>
+
+                </div>
+
+
+                <!-- =================================================
+                 FILLER FLOW
+            ================================================== -->
+
+                <div class="input-group">
+
+                    <label for="fillerFlow">
+                        Filler Flow
+                    </label>
+
+                    <div class="input-with-unit">
+
+                        <input id="fillerFlow" type="number" step="0.001" min="10" max="30" placeholder="e.g. 20">
+
+                        <span>
+                            %
+                        </span>
+
+                    </div>
+
+                    <small>
+                        Allowed: 10–30
+                    </small>
+
+                </div>
+
+
+                <!-- =================================================
+                 STEAM PRESSURE
+            ================================================== -->
+
+                <div class="input-group">
+
+                    <label for="steamPressure">
+                        Steam Pressure
+                    </label>
+
+                    <div class="input-with-unit">
+
+                        <input id="steamPressure" type="number" step="0.001" min="4" max="6" placeholder="e.g. 5.3">
+
+                        <span>
+                            bar
+                        </span>
+
+                    </div>
+
+                    <small>
+                        Allowed: 4–6
+                    </small>
+
+                </div>
+
+
+                <!-- =================================================
+                 MOISTURE
+            ================================================== -->
+
+                <div class="input-group">
+
+                    <label for="moisture">
+                        Moisture
+                    </label>
+
+                    <div class="input-with-unit">
+
+                        <input id="moisture" type="number" step="0.001" min="5.5" max="7.5" placeholder="e.g. 6.5">
+
+                        <span>
+                            %
+                        </span>
+
+                    </div>
+
+                    <small>
+                        Allowed: 5.5–7.5
+                    </small>
+
+                </div>
+
+
+                <!-- =================================================
+                 ASH
+            ================================================== -->
+
+                <div class="input-group">
+
+                    <label for="ash">
+                        Ash
+                    </label>
+
+                    <div class="input-with-unit">
+
+                        <input id="ash" type="number" step="0.001" min="6" max="12" placeholder="e.g. 9">
+
+                        <span>
+                            %
+                        </span>
+
+                    </div>
+
+                    <small>
+                        Allowed: 6–12
+                    </small>
+
+                </div>
+
+
+                <!-- =================================================
+                 CALIPER
+            ================================================== -->
+
+                <div class="input-group">
+
+                    <label for="caliper">
+                        Caliper
+                    </label>
+
+                    <div class="input-with-unit">
+
+                        <input id="caliper" type="number" step="0.001" min="80" max="140" placeholder="e.g. 110">
+
+                        <span>
+                            µm
+                        </span>
+
+                    </div>
+
+                    <small>
+                        Allowed: 80–140
+                    </small>
+
+                </div>
+
+
+                <!-- =================================================
+                 CURRENT BASIS WEIGHT
+            ================================================== -->
+
+                <div class="input-group">
+
+                    <label>
+                        Current Basis Weight
+                    </label>
+
+                    <div class="readonly-value">
+
+                        <span id="currentBasisWeight">
+                            --
+                        </span>
+
+                        <span>
+                            GSM
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- =================================================
+                 TARGET SETPOINT
+            ================================================== -->
+
+                <div class="input-group">
+
+                    <label>
+                        Target Setpoint
+                    </label>
+
+                    <div class="readonly-value">
+
+                        <span id="targetSetpoint">
+                            --
+                        </span>
+
+                        <span>
+                            GSM
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+             INPUT VALIDATION MESSAGE
+        ================================================== -->
+
+            <div id="inputValidationMessage" class="operator-review" style="display: none;">
+
+                <strong>
+                    ⚠ INPUT VALIDATION
+                </strong>
+
+                <p id="inputValidationText">
+                    Please enter valid process values.
+                </p>
+
+            </div>
+
+
+            <button id="analyzeButton" class="primary-button">
+
+                <span>
+                    ANALYZE TRANSITION
+                </span>
+
+                <span>
+                    →
+                </span>
+
+            </button>
+
+        </section>
+
+
+        <!-- =====================================================
+         AI PREDICTION
+    ====================================================== -->
+
+        <section class="panel">
+
+            <div class="section-heading">
+
+                <div>
+
+                    <span class="section-number">
+                        02
+                    </span>
+
+                    <h2>
+                        AI Prediction
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            <div id="predictionStatus" class="risk-banner">
+
+                <span id="riskIcon" class="risk-icon">
+                    ⚠
+                </span>
+
+                <div>
+
+                    <strong id="predictionStatusText">
+                        Waiting for analysis
+                    </strong>
+
+                    <p id="predictionDescription">
+                        Run the transition analysis to evaluate
+                        future Basis Weight.
                     </p>
 
                 </div>
 
             </div>
 
-        </div>
 
-    </section>
+            <div class="metrics-grid">
 
 
-    <!-- =====================================================
+                <div class="metric-card">
+
+                    <span>
+                        Current Basis Weight
+                    </span>
+
+                    <strong id="metricCurrent">
+                        --
+                    </strong>
+
+                    <small>
+                        GSM
+                    </small>
+
+                </div>
+
+
+                <div class="metric-card">
+
+                    <span>
+                        Target Setpoint
+                    </span>
+
+                    <strong id="metricTarget">
+                        --
+                    </strong>
+
+                    <small>
+                        GSM
+                    </small>
+
+                </div>
+
+
+                <div class="metric-card">
+
+                    <span>
+                        Predicted Future
+                    </span>
+
+                    <strong id="metricPredicted">
+                        --
+                    </strong>
+
+                    <small>
+                        GSM
+                    </small>
+
+                </div>
+
+
+                <div class="metric-card">
+
+                    <span>
+                        Predicted Deviation
+                    </span>
+
+                    <strong id="metricDeviation">
+                        --
+                    </strong>
+
+                    <small>
+                        % from target
+                    </small>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+             TRAJECTORY CHART
+        ================================================== -->
+
+            <div class="chart-container">
+
+                <div class="chart-header">
+
+                    <div>
+
+                        <h3>
+                            Basis Weight Trajectory
+                        </h3>
+
+                        <p>
+                            Current → predicted transition behavior
+                        </p>
+
+                    </div>
+
+                    <span class="chart-badge">
+                        AI PREDICTION
+                    </span>
+
+                </div>
+
+
+                <canvas id="trajectoryChart"></canvas>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+         AI RECOMMENDATION
+    ====================================================== -->
+
+        <section class="panel">
+
+            <div class="section-heading">
+
+                <div>
+
+                    <span class="section-number">
+                        03
+                    </span>
+
+                    <h2>
+                        AI Recommendation
+                    </h2>
+
+                </div>
+
+                <span class="section-description">
+                    Constraint-aware operating recommendation
+                </span>
+
+            </div>
+
+
+            <div id="recommendationBanner" class="recommendation-banner">
+
+                <div>
+
+                    <span class="recommendation-label">
+                        AI DECISION
+                    </span>
+
+                    <h3 id="recommendationStatus">
+                        Loading recommendation...
+                    </h3>
+
+                </div>
+
+            </div>
+
+
+            <div class="recommendation-grid">
+
+
+                <div class="recommendation-card">
+
+                    <span>
+                        Machine Speed
+                    </span>
+
+                    <strong id="recommendedSpeed">
+                        --
+                    </strong>
+
+                    <small>
+                        m/min
+                    </small>
+
+                </div>
+
+
+                <div class="recommendation-card">
+
+                    <span>
+                        Stock Flow
+                    </span>
+
+                    <strong id="recommendedStock">
+                        --
+                    </strong>
+
+                    <small>
+                        %
+                    </small>
+
+                </div>
+
+
+                <div class="recommendation-card">
+
+                    <span>
+                        Steam Pressure
+                    </span>
+
+                    <strong id="recommendedSteam">
+                        --
+                    </strong>
+
+                    <small>
+                        bar
+                    </small>
+
+                </div>
+
+
+                <div class="recommendation-card">
+
+                    <span>
+                        Expected Basis Weight
+                    </span>
+
+                    <strong id="recommendedBW">
+                        --
+                    </strong>
+
+                    <small>
+                        GSM
+                    </small>
+
+                </div>
+
+
+                <div class="recommendation-card">
+
+                    <span>
+                        Expected Deviation
+                    </span>
+
+                    <strong id="recommendedDeviation">
+                        --
+                    </strong>
+
+                    <small>
+                        % from target
+                    </small>
+
+                </div>
+
+                <div class="recommendation-card">
+
+                    <span>Filler Flow</span>
+
+                    <strong id="recommendedFiller">--</strong>
+
+                    <small>%</small>
+
+                </div>
+
+                <div class="recommendation-card">
+
+                    <span>Moisture</span>
+
+                    <strong id="recommendedMoisture">--</strong>
+
+                    <small>%</small>
+
+                </div>
+
+                <div class="recommendation-card">
+
+                    <span>Ash</span>
+
+                    <strong id="recommendedAsh">--</strong>
+
+                    <small>%</small>
+
+                </div>
+
+                <div class="recommendation-card">
+
+                    <span>Caliper</span>
+
+                    <strong id="recommendedCaliper">--</strong>
+
+                    <small>µm</small>
+
+                </div>
+
+            </div>
+
+
+            <!-- ACCEPT / REJECT -->
+
+            <div class="decision-actions">
+
+                <button id="acceptRecommendation" class="decision-button accept-button">
+                    ✓ ACCEPT RECOMMENDATION
+                </button>
+
+
+                <button id="rejectRecommendation" class="decision-button reject-button">
+                    ✕ REJECT RECOMMENDATION
+                </button>
+
+            </div>
+
+
+            <div id="operatorReview" class="operator-review">
+
+                <strong>
+                    ⚠ OPERATOR REVIEW REQUIRED
+                </strong>
+
+                <p id="operatorReviewText">
+                    Recommendation results will appear here.
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+         HISTORICAL EVIDENCE
+    ====================================================== -->
+
+        <section class="panel">
+
+            <div class="section-heading">
+
+                <div>
+
+                    <span class="section-number">
+                        04
+                    </span>
+
+                    <h2>
+                        Historical Evidence
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            <div class="evidence-grid">
+
+
+                <div class="evidence-card">
+
+                    <span>
+                        Historical Records
+                    </span>
+
+                    <strong id="evidenceRecords">
+                        --
+                    </strong>
+
+                </div>
+
+
+                <div class="evidence-card">
+
+                    <span>
+                        Success Rate
+                    </span>
+
+                    <strong id="successRate">
+                        --
+                    </strong>
+
+                </div>
+
+
+                <div class="evidence-card">
+
+                    <span>
+                        Failure Rate
+                    </span>
+
+                    <strong id="failureRate">
+                        --
+                    </strong>
+
+                </div>
+
+
+                <div class="evidence-card">
+
+                    <span>
+                        Stabilization
+                    </span>
+
+                    <strong id="stabilizationTime">
+                        --
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <div class="evidence-note">
+
+                <strong>
+                    Evidence-based decision support
+                </strong>
+
+                <p id="evidenceMessage">
+                    Historical transition evidence will be
+                    loaded from Stage 6.
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+         EXPLAINABILITY
+    ====================================================== -->
+
+        <section class="panel">
+
+            <div class="section-heading">
+
+                <div>
+
+                    <span class="section-number">
+                        05
+                    </span>
+
+                    <h2>
+                        Explainability
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            <div class="explanation-box">
+
+                <h3>
+                    Why did the AI make this decision?
+                </h3>
+
+                <div id="explanationContent">
+
+                    <div class="explanation-item">
+
+                        <span class="explanation-number">
+                            01
+                        </span>
+
+                        <p>
+                            Prediction explanation will appear
+                            after analysis.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
          AI DECISION PIPELINE
     ====================================================== -->
 
-    <section class="panel architecture-panel">
+        <section class="panel architecture-panel">
 
-        <div class="section-heading">
+            <div class="section-heading">
 
-            <div>
+                <div>
 
-                <span class="section-number">
-                    06
-                </span>
+                    <span class="section-number">
+                        06
+                    </span>
 
-                <h2>
-                    AI Decision Pipeline
-                </h2>
+                    <h2>
+                        AI Decision Pipeline
+                    </h2>
+
+                </div>
 
             </div>
 
-        </div>
 
+            <div class="pipeline">
 
-        <div class="pipeline">
+                <div class="pipeline-step">
+                    Historical Data
+                </div>
 
-            <div class="pipeline-step">
-                Historical Data
+                <span>→</span>
+
+                <div class="pipeline-step">
+                    Feature Engineering
+                </div>
+
+                <span>→</span>
+
+                <div class="pipeline-step">
+                    XGBoost
+                </div>
+
+                <span>→</span>
+
+                <div class="pipeline-step">
+                    Risk Detection
+                </div>
+
+                <span>→</span>
+
+                <div class="pipeline-step">
+                    Recommendation
+                </div>
+
+                <span>→</span>
+
+                <div class="pipeline-step">
+                    Evidence
+                </div>
+
             </div>
 
-            <span>→</span>
-
-            <div class="pipeline-step">
-                XGBoost
-            </div>
-
-            <span>→</span>
-
-            <div class="pipeline-step">
-                Risk Detection
-            </div>
-
-            <span>→</span>
-
-            <div class="pipeline-step">
-                Recommendation
-            </div>
-
-            <span>→</span>
-
-            <div class="pipeline-step">
-                Evidence
-            </div>
-
-        </div>
-
-    </section>
+        </section>
 
 
-    <!-- =====================================================
+        <!-- =====================================================
          FOOTER
     ====================================================== -->
 
-    <footer>
+        <footer>
 
-        <span>
-            Paper Grade Transition Copilot
-        </span>
+            <span>
+                Paper Grade Transition Copilot
+            </span>
 
-        <span>
-            AI Decision Support Prototype
-        </span>
+            <span>
+                AI Decision Support Prototype
+            </span>
 
-    </footer>
+        </footer>
 
-</div>
+    </div>
 
 
-<script
-    src="{{ url_for('static', filename='js/dashboard.js') }}"
-></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 
 </body>
 

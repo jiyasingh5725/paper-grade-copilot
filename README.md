@@ -267,6 +267,134 @@ Paper-Grade-Transition-Copilot/
 
 ---
 
+---
+
+# Project Screenshots
+
+## AI Dashboard Interface
+
+The interactive dashboard provides real-time monitoring, prediction results, AI recommendations, and historical stabilization evidence.
+
+### Main Dashboard
+
+![Paper Grade Copilot Dashboard](reports/screenshots/img1.png)
+
+
+### Live Prediction Module
+
+The prediction module displays:
+
+- Future Basis Weight Prediction
+- Off-Spec Risk Probability
+- Process Stability Status
+- Current Process Parameters
+
+![Live Prediction](reports/screenshots/img2.png)
+
+![Live Prediction](reports/screenshots/img3.png)
+### AI Recommendation Engine
+
+The recommendation engine suggests optimal process parameter adjustments to minimize deviation and maintain production stability.
+
+![AI Recommendation](reports/screenshots/img4.png)
+
+![AI Recommendation](reports/screenshots/img5.png)
+
+
+### Historical Stabilization Evidence
+
+The system provides previously successful transition examples to support operator decisions.
+
+![Historical Evidence](reports/screenshots/img6.png)
+
+![Historical Evidence](reports/screenshots/img7.png)
+---
+
+---
+
+# Data Analysis & Model Visualization
+
+The project includes detailed exploratory data analysis, prediction analysis, and explainable AI visualizations to understand the factors affecting paper grade transitions.
+
+---
+
+## Exploratory Data Analysis (EDA)
+
+### Basis Weight Distribution
+
+Shows the distribution of paper basis weight values across production data.
+
+![Basis Weight Distribution](reports/figures/basis_weight_distribution.png)
+
+
+### Basis Weight Deviation Analysis
+
+Analyzes deviation between actual basis weight and target setpoint during production.
+
+![Basis Weight Deviation](reports/figures/basis_weight_deviation.png)
+
+
+### Deviation Distribution
+
+Shows the frequency distribution of basis weight deviations.
+
+![Deviation Distribution](reports/figures/deviation_distribution.png)
+
+
+### Process Variable Correlation Heatmap
+
+Displays relationships between manufacturing process parameters and quality variables.
+
+![Correlation Heatmap](reports/figures/correlation_heatmap.png)
+
+---
+
+# Prediction Analysis
+
+## Future Basis Weight vs Setpoint
+
+Comparison between predicted future basis weight and desired operating setpoint.
+
+![Future Basis Weight vs Setpoint](reports/figures/future_basis_weight_vs_setpoint.png)
+
+
+## Off-Spec Probability Distribution
+
+Shows the probability distribution of production moving towards off-spec conditions.
+
+![Off-Spec Distribution](reports/figures/off_spec_distribution.png)
+
+---
+
+# Explainable AI (XAI) Analysis
+
+The system uses SHAP-based explainability to understand how process parameters influence AI predictions.
+
+## SHAP Feature Importance
+
+Identifies the most influential process variables affecting paper quality prediction.
+
+![SHAP Feature Importance](reports/figures/shap_feature_importance.png)
+
+
+## SHAP Summary Analysis
+
+Provides detailed feature impact visualization for model decisions.
+
+![SHAP Summary](reports/figures/shap_summary.png)
+
+---
+
+# Stabilization Analysis
+
+## Production Stabilization by Outcome
+
+Analyzes historical transition outcomes and identifies successful stabilization patterns.
+
+![Stabilization by Outcome](reports/figures/stabilization_by_outcome.png)
+
+---
+
 # Process Variables
 
 The AI system monitors the following controllable process parameters:
